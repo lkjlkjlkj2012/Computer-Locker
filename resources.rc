@@ -1,0 +1,4 @@
+#include "windows.h"  // 必须包含，用于资源定义
+
+// 定义程序图标（替换为你的图标路径）
+IDI_ICON1 ICON DISCARDABLE "icon.ico"
