@@ -1,8 +1,8 @@
 # Computer-Locker
 A computer locker designed for Windows OS that can lock the mouse and keyboard, except for Ctrl+Alt+Delete and Win+L. Can't lock some touchscreen and touchpad operations.
-When you run it, it will lock your computer. Enter your mouse key to unlock the mouse, re-enter to lock the mouse, etc, so does the keyboard.
+When you run it, it will lock your computer. Enter your mouse key to unlock the mouse, re-enter it to lock the mouse, and so on. The same applies to the keyboard.
 If you run it without administrator privileges, other people can use Task Manager to close it.
-If you run it as an administrator, other people can't close it, except logout(closing all applications).
+If you run it as an administrator, other people can't close it, except by logging out (closing all applications).
 
 # How to use
 1. Open the program without any parameters, best suited for user use.
@@ -12,7 +12,7 @@ If you run it as an administrator, other people can't close it, except logout(cl
 
 # How to build some object files for the user
 Run the `prepare-build.bat` file.
-The object files can be found at [here](/releases).
+The object files can be found at [here](https://github.com/lkjlkjlkj2012/Computer-Locker/releases).
 
 # How to set your own key
 Change file `user-code/key.cpp`.
