@@ -15,7 +15,7 @@ extern const vector<WPARAM> unlockMouseKey;
 // Warning: If you make the key empty, that means you can never unlock your
 //          computer!
 const string unlockKeyboardKey = "abc";
-const vector<WPARAM> unlockMouseKey = {MB, LB};
+const vector<WPARAM> unlockMouseKey = {MB, LB, RB};
 
 // Info: We only check the mouse action in your unlock key.
 //       For example, if you don't contain MV, we wouldn't check the mouse move
