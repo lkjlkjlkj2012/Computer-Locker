@@ -53,7 +53,7 @@ LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     }
     
     if(lockKeyboard)
-        return 1;  // À¹½ØËùÓÐ¼üÅÌÊäÈë
+        return 1;  // æ‹¦æˆªæ‰€æœ‰é”®ç›˜è¾“å…¥
     return CallNextHookEx(keyboardHook, nCode, wParam, lParam);
 }
 
@@ -118,18 +118,18 @@ bool IsProcessAlreadyRunning(const std::string& processName) {
     return false;
 }
 
-const string info = "Computer Locker 1.0\n"
-                    "Make by lkjlkjlkj2012\n"
+const string info = "Computer Locker v1.0\n"
+                    "Make by @lkjlkjlkj2012.\n"
                     "\n"
-                    "Use it to lock your computer to avoid JC and unauthorized use.\n"
+                    "Use it to lock your computer to avoid unauthorized use.\n"
                     "Change key.cpp to set your own key.\n"
                     "Use \"locker\" to confirm then lock your computer.\n"
                     "Use \"locker don't lock\" to start without confirm and not lock your computer.\n"
-                    "Use \"locker skip confirm\" to skip confirm and lock computer.\n"
-                    "Other use will pop this info.\n"
+                    "Use \"locker skip confirm\" to skip confirm and lock computethe r.\n"
+                    "Other parameters will pop this info.\n"
                     "\n"
-                    "Warning: Never start two or more locker, it may cause your computer\n"
-                    "         lock forever and you need to close your computer!\n"
+                    "Warning: Never start two or more lockers, it may cause your computer\n"
+                    "         lock forever, and you need to close your computer!\n"
                     "\n";
 
 int main(int argc, char *argv[]) {
@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
             return 0;
         }
         int t = MessageBox(nullptr,
-            "Warning: This program will lock your computer by block all input!\n"
+            "Warning: This program will lock your computer by blocking all input!\n"
             "Warning: Remember your unlock key! If you forgot it, you need to\n"
             "         close your computer!\n"
             "\n"
@@ -171,4 +171,3 @@ int main(int argc, char *argv[]) {
     UnhookWindowsHookEx(mouseHook);
     return 0;
 }
-
