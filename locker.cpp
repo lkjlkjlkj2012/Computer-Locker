@@ -17,41 +17,86 @@ using namespace std;
 #define MV WM_MOUSEMOVE
 #define WH WM_MOUSEWHEEL
 
-HHOOK keyboardHook,mouseHook;
+HHOOK keyboardHook, mouseHook;
 
 extern const string unlockKeyboardKey;
 extern const vector<WPARAM> unlockMouseKey;
 
-vector<int> keyboardKeyPoses = {-1};
-vector<int> mouseKeyPoses = {-1};
+// KMP状态机结构
+struct KMPState {
+    vector<int> prefixTable;
+    int currentState;
+
+    KMPState(const vector<WPARAM>& pattern) {
+        computePrefix(pattern);
+        currentState = 0;
+    }
+
+    KMPState(const string& pattern) {
+        vector<WPARAM> intPattern(pattern.begin(), pattern.end());
+        computePrefix(intPattern);
+        currentState = 0;
+    }
+
+    void computePrefix(const vector<WPARAM>& pattern) {
+        prefixTable.resize(pattern.size());
+        int j = 0;
+        for (int i = 1; i < pattern.size(); i++) {
+            while (j > 0 && pattern[i] != pattern[j])
+                j = prefixTable[j-1];
+            if (pattern[i] == pattern[j]) j++;
+            prefixTable[i] = j;
+        }
+    }
+
+    bool processInput(WPARAM input, const vector<WPARAM>& pattern) {
+        while (currentState > 0 && input != pattern[currentState])
+            currentState = prefixTable[currentState-1];
+
+        if (input == pattern[currentState])
+            currentState++;
+
+        if (currentState == pattern.size()) {
+            currentState = 0;
+            return true;
+        }
+        return false;
+    }
+
+    bool processInput(char input, const string& pattern) {
+        while (currentState > 0 && tolower(input) != tolower(pattern[currentState]))
+            currentState = prefixTable[currentState-1];
+
+        if (tolower(input) == tolower(pattern[currentState]))
+            currentState++;
+
+        if (currentState == pattern.size()) {
+            currentState = 0;
+            return true;
+        }
+        return false;
+    }
+};
+
+KMPState keyboardKMP(unlockKeyboardKey);
+KMPState mouseKMP(unlockMouseKey);
+
 bool lockKeyboard = true, lockMouse = true;
 bool preLockKeyboard = true, preLockMouse = true;
 WPARAM lastMouseAction = 0;
 
 LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     lockKeyboard = preLockKeyboard;
-    
-    if (nCode == HC_ACTION && wParam == WM_KEYDOWN && unlockKeyboardKey.length()>0) {
+
+    if (nCode == HC_ACTION && wParam == WM_KEYDOWN && !unlockKeyboardKey.empty()) {
         KBDLLHOOKSTRUCT* pKey = (KBDLLHOOKSTRUCT*)lParam;
         char pressedKey = MapVirtualKey(pKey->vkCode, MAPVK_VK_TO_CHAR);
 
-        vector<int> tmp;
-        bool flag=false;
-        for(int keyboardKeyPos:keyboardKeyPoses)
-        	if(tolower(pressedKey) == tolower(unlockKeyboardKey[keyboardKeyPos+1])) {
-        		if(keyboardKeyPos+1==unlockKeyboardKey.length()-1) {
-        			flag=true;
-        			preLockKeyboard=!preLockKeyboard;
-				} else {
-					tmp.push_back(keyboardKeyPos+1);
-				}
-			}
-		if(flag)
-			tmp.clear();
-		tmp.push_back(-1);
-		keyboardKeyPoses=tmp;
+        if (keyboardKMP.processInput(pressedKey, unlockKeyboardKey)) {
+            preLockKeyboard = !preLockKeyboard;
+        }
     }
-    
+
     if(lockKeyboard)
         return 1;  // 拦截所有键盘输入
     return CallNextHookEx(keyboardHook, nCode, wParam, lParam);
@@ -59,38 +104,20 @@ LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
 
 LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
     lockMouse = preLockMouse;
-    
-    if (nCode == HC_ACTION) {
-        if (unlockMouseKey.size() > 0 &&
-            find(unlockMouseKey.begin(), unlockMouseKey.end(), wParam) !=
-            unlockMouseKey.end() && !(lastMouseAction == wParam &&
-            (wParam == MV || wParam == WH))) {
-            #ifdef DEBUG
-            cout<<"wParam="<<wParam<<endl;
-            #endif
-            
-            vector<int> tmp;
-            bool flag=false;
+
+    if (nCode == HC_ACTION && !unlockMouseKey.empty()) {
+        if (find(unlockMouseKey.begin(), unlockMouseKey.end(), wParam) != unlockMouseKey.end() &&
+            !(lastMouseAction == wParam && (wParam == MV || wParam == WH))) {
+
             lastMouseAction = wParam;
-            for(int mouseKeyPos:mouseKeyPoses)
-	            if (wParam == unlockMouseKey[mouseKeyPos+1]) {
-	                if (mouseKeyPos+1 == unlockMouseKey.size()-1) {
-	                    flag=true;
-	                    preLockMouse = !preLockMouse;
-	                } else {
-	                	tmp.push_back(mouseKeyPos+1);
-					}
-	            }
-	        if(flag)
-	        	tmp.clear();
-	        tmp.push_back(-1);
-	        mouseKeyPoses=tmp;
-	        #ifdef DEBUG
-	        cout<<"mouseKeyPoses={";
-	        for(int i=0;i<mouseKeyPoses.size();i++)
-	        	cout<<mouseKeyPoses[i]<<(i==mouseKeyPoses.size()-1?"":" ");
-	        cout<<"}"<<endl;
-	        #endif
+
+            if (mouseKMP.processInput(wParam, unlockMouseKey)) {
+                preLockMouse = !preLockMouse;
+            }
+
+            #ifdef DEBUG
+            cout << "Mouse state: " << mouseKMP.currentState << endl;
+            #endif
         }
     }
 
