@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <tlhelp32.h>
+#include <tchar.h>
 
 //#define DEBUG
 #ifdef DEBUG
@@ -85,6 +86,8 @@ bool lockKeyboard = true, lockMouse = true;
 bool preLockKeyboard = true, preLockMouse = true;
 WPARAM lastMouseAction = 0;
 
+HWND hwnd;
+
 LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     lockKeyboard = preLockKeyboard;
 
@@ -145,7 +148,69 @@ bool IsProcessAlreadyRunning(const std::string& processName) {
     return false;
 }
 
-const string info = "Computer Locker v1.0\n"
+void checkStatus() {
+    if(lockMouse&&lockKeyboard)
+    	ShowWindow(hwnd,SW_MAXIMIZE);
+    else
+    	ShowWindow(hwnd,SW_MINIMIZE);
+}
+
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
+        case WM_PAINT: {
+	        PAINTSTRUCT ps;
+	        HDC hdc = BeginPaint(hwnd, &ps);
+	        
+	        // 获取客户区矩形
+	        RECT rc;
+	        GetClientRect(hwnd, &rc);
+	        
+	        // 创建字体
+	        HFONT hFont = CreateFont(
+	            -48, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+	            DEFAULT_CHARSET, OUT_OUTLINE_PRECIS,
+	            CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+	            VARIABLE_PITCH, _T("Arial"));
+	        HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
+	        
+	        // 设置文本属性
+	        SetTextColor(hdc, RGB(255, 255, 255));
+	        SetBkMode(hdc, TRANSPARENT);
+	        
+	        // 计算文本高度
+	        LPCTSTR pszText = _T("已锁定\nYour computer has been locked");
+	        RECT rcText = rc;
+	        DrawText(hdc, pszText, -1, &rcText, DT_CALCRECT | DT_WORDBREAK);
+	        
+	        // 调整矩形位置实现居中
+	        rc.top = (rc.bottom - (rcText.bottom - rcText.top)) / 2;
+	        rc.bottom = rc.top + (rcText.bottom - rcText.top);
+	        
+	        // 绘制文本
+	        DrawText(hdc, pszText, -1, &rc, DT_WORDBREAK | DT_CENTER);
+	        
+	        // 恢复资源
+	        SelectObject(hdc, hOldFont);
+	        DeleteObject(hFont);
+	        EndPaint(hwnd, &ps);
+	        break;
+        }
+
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            break;
+
+        case WM_TIMER:
+        	checkStatus();
+        	break;
+
+        default:
+            return DefWindowProc(hwnd, msg, wParam, lParam);
+    }
+    return 0;
+}
+
+const string info = "Computer Locker v1.1\n"
                     "Make by @lkjlkjlkj2012.\n"
                     "\n"
                     "Use it to lock your computer to avoid unauthorized use.\n"
@@ -159,14 +224,14 @@ const string info = "Computer Locker v1.0\n"
                     "         lock forever, and you need to close your computer!\n"
                     "\n";
 
-int main(int argc, char *argv[]) {
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
     string curExe = "locker.exe";
-    if (argc == 3 && (string)argv[1] == "skip" && (string)argv[2] == "confirm") {
+    if (!strcmp(lpCmdLine, "skip comfirm")) {
         if (IsProcessAlreadyRunning(curExe)) return 0;
-    } else if (argc == 3 && (string)argv[1] == "don't" && (string)argv[2] == "lock") {
+    } else if (!strcmp(lpCmdLine, "don't lock")) {
         if (IsProcessAlreadyRunning(curExe)) return 0;
         preLockKeyboard = preLockMouse = false;
-    } else if (argc == 1) {
+    } else if (!strcmp(lpCmdLine, "")) {
         if (IsProcessAlreadyRunning(curExe)) {
             MessageBox(nullptr, "Process already running!", "Error",
                 MB_OK|MB_ICONERROR);
@@ -188,6 +253,34 @@ int main(int argc, char *argv[]) {
     keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, NULL, 0);
     mouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseProc, NULL, 0);
 
+    // 注册窗口类
+    WNDCLASS wc = {0};
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = hInstance;
+    wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
+    wc.lpszClassName = _T("LockScreenClass");
+
+    RegisterClass(&wc);
+
+    // 获取屏幕尺寸
+    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+    // 创建全屏窗口
+    hwnd = CreateWindowEx(
+        WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+        _T("LockScreenClass"),
+        _T("锁定屏幕"),
+        WS_POPUP,
+        0, 0, screenWidth, screenHeight,
+        NULL, NULL, hInstance, NULL);
+
+    // 显示窗口
+    ShowWindow(hwnd, SW_SHOW);
+    UpdateWindow(hwnd);
+
+    SetTimer(hwnd, 1, 100, NULL);
+    
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
@@ -196,5 +289,5 @@ int main(int argc, char *argv[]) {
 
     UnhookWindowsHookEx(keyboardHook);
     UnhookWindowsHookEx(mouseHook);
-    return 0;
+    return (int)msg.wParam;
 }
